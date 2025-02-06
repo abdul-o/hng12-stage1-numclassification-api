@@ -1,6 +1,8 @@
-const express = require('express');
-const cors = require('cors');
-const fetch = require('node-fetch'); // Ensure you have installed node-fetch: npm install node-fetch
+// Rename your file to index.mjs or add "type": "module" in package.json
+import express from 'express';
+import cors from 'cors';
+import fetch from 'node-fetch';
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
