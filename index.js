@@ -1,98 +1,116 @@
-const express = require("express");
-const cors = require("cors");
-const axios = require("axios");
+const express = require('express');
+const cors = require('cors');
+const fetch = require('node-fetch'); // Ensure you have installed node-fetch: npm install node-fetch
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Enable CORS
+// Enable CORS for all routes
 app.use(cors());
 
-app.get("/", (req, res) => {
-    res.json({
-      message: "Welcome to the Number Classification API!",
-      usage: "/api/classify-number?number=371"
-    });
-  });
-
-// Function to check if a number is prime
-const isPrime = (num) => {
+/**
+ * Check if a number is prime.
+ * @param {number} num
+ * @returns {boolean}
+ */
+function isPrime(num) {
   if (num < 2) return false;
-  for (let i = 2; i <= Math.sqrt(num); i++) {
+  for (let i = 2, limit = Math.sqrt(num); i <= limit; i++) {
     if (num % i === 0) return false;
   }
   return true;
-};
+}
 
-// Function to check if a number is perfect
-const isPerfect = (num) => {
-  let sum = 1;
-  for (let i = 2; i <= Math.sqrt(num); i++) {
-    if (num % i === 0) {
-      sum += i;
-      if (i !== num / i) sum += num / i;
-    }
+/**
+ * Check if a number is perfect.
+ * A perfect number equals the sum of its proper divisors.
+ * @param {number} num
+ * @returns {boolean}
+ */
+function isPerfect(num) {
+  if (num < 1) return false;
+  let sum = 0;
+  // Only need to loop to half of the number.
+  for (let i = 1; i <= num / 2; i++) {
+    if (num % i === 0) sum += i;
   }
-  return sum === num && num !== 1;
-};
-
-// Function to check if a number is an Armstrong number
-const isArmstrong = (num) => {
-  const digits = num.toString().split("");
-  const power = digits.length;
-  const sum = digits.reduce((acc, d) => acc + Math.pow(Number(d), power), 0);
   return sum === num;
-};
+}
 
-// Function to get the sum of digits
-const getDigitSum = (num) => {
-  return num.toString().split("").reduce((acc, d) => acc + Number(d), 0);
-};
+/**
+ * Check if a number is an Armstrong number.
+ * An Armstrong number is equal to the sum of its own digits each raised to the power of the number of digits.
+ * @param {number} num
+ * @returns {boolean}
+ */
+function isArmstrong(num) {
+  const strNum = Math.abs(num).toString(); // Use absolute value for proper digit handling.
+  const power = strNum.length;
+  const sum = strNum.split('').reduce((acc, digit) => acc + Math.pow(Number(digit), power), 0);
+  return sum === Math.abs(num);
+}
 
-// API Route
-app.get("/api/classify-number", async (req, res) => {
-  const { number } = req.query;
-  const num = parseInt(number, 10);
+/**
+ * Compute the sum of the digits of a number.
+ * @param {number} num
+ * @returns {number}
+ */
+function digitSum(num) {
+  return Math.abs(num)
+    .toString()
+    .split('')
+    .reduce((acc, digit) => acc + Number(digit), 0);
+}
 
-  // Validate input
-  if (isNaN(num)) {
+/**
+ * GET /api/classify-number?number=371
+ * Returns a JSON response with the number's properties and a fun fact.
+ */
+app.get('/api/classify-number', async (req, res) => {
+  const { number: numberParam } = req.query;
+
+  // Input validation: Must be a valid integer.
+  if (!numberParam || isNaN(numberParam) || !/^-?\d+$/.test(numberParam)) {
     return res.status(400).json({
-      number,
-      error: true,
-      message: "Invalid input. Please provide a valid integer."
+      number: numberParam,
+      error: true
     });
   }
 
-  // Determine properties
-  const properties = [];
-  if (num % 2 !== 0) properties.push("odd");
-  else properties.push("even");
+  const number = parseInt(numberParam, 10);
 
-  if (isArmstrong(num)) properties.push("armstrong");
-  if (isPrime(num)) properties.push("prime");
-  if (isPerfect(num)) properties.push("perfect");
+  // Determine mathematical properties.
+  const prime = isPrime(number);
+  const perfect = isPerfect(number);
+  const armstrong = isArmstrong(number);
+  const ds = digitSum(number);
+  const parity = number % 2 === 0 ? 'even' : 'odd';
 
-  // Get fun fact from numbersapi.com
-  let funFact = "";
+  // Set the "properties" array based on whether the number is Armstrong.
+  let properties = armstrong ? ['armstrong', parity] : [parity];
+
+  // Fetch a fun fact from the Numbers API using the "math" category.
+  let funFact = '';
   try {
-    const response = await axios.get(`http://numbersapi.com/${num}`);
-    funFact = response.data;
+    // The Numbers API returns plain text by default.
+    const response = await fetch(`http://numbersapi.com/${number}/math`);
+    funFact = await response.text();
   } catch (error) {
-    funFact = "No fun fact available.";
+    funFact = "Fun fact not available";
   }
 
-  // Send response
-  res.json({
-    number: num,
-    is_prime: isPrime(num),
-    is_perfect: isPerfect(num),
+  // Return the JSON response.
+  return res.status(200).json({
+    number,
+    is_prime: prime,
+    is_perfect: perfect,
     properties,
-    digit_sum: getDigitSum(num),
-    fun_fact: funFact,
+    digit_sum: ds,
+    fun_fact: funFact
   });
 });
 
-// Start Server
+// Start the server.
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
