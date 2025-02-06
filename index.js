@@ -8,6 +8,13 @@ const PORT = process.env.PORT || 3000;
 // Enable CORS
 app.use(cors());
 
+app.get("/", (req, res) => {
+    res.json({
+      message: "Welcome to the Number Classification API!",
+      usage: "/api/classify-number?number=371"
+    });
+  });
+
 // Function to check if a number is prime
 const isPrime = (num) => {
   if (num < 2) return false;
@@ -52,6 +59,7 @@ app.get("/api/classify-number", async (req, res) => {
     return res.status(400).json({
       number,
       error: true,
+      message: "Invalid input. Please provide a valid integer."
     });
   }
 
